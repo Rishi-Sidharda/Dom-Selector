@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "DOM Selector Toggle",
+  "version": "1.0.0",
+  "action": {
+    "default_title": "DOM Selector Toggle",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["activeTab", "scripting"]
+}
