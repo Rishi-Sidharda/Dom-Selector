@@ -81,10 +81,68 @@ document.getElementById("toggle").addEventListener("click", async () => {
       }
 
       function onClick(e) {
-        // Prevent the page click and turn off
+        // Prevent the page click
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
+
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        if (!el) {
+          off();
+          return;
+        }
+
+        // Utility: get computed styles as an object
+        function getComputedStyleObject(element) {
+          const style = window.getComputedStyle(element);
+          const obj = {};
+          for (let i = 0; i < style.length; i++) {
+            const prop = style[i];
+            obj[prop] = style.getPropertyValue(prop);
+          }
+          return obj;
+        }
+
+        // Recursive DOM+CSS serializer
+        function serializeElement(element) {
+          const info = {
+            tag: element.tagName.toLowerCase(),
+            attributes: {},
+            styles: getComputedStyleObject(element),
+            children: [],
+            textContent:
+              element.childNodes.length === 1 &&
+              element.childNodes[0].nodeType === Node.TEXT_NODE
+                ? element.textContent.trim()
+                : undefined,
+          };
+
+          // Collect attributes
+          for (const attr of element.attributes || []) {
+            info.attributes[attr.name] = attr.value;
+          }
+
+          // Serialize children (only Elements, skip text nodes already captured)
+          for (const child of element.children) {
+            info.children.push(serializeElement(child));
+          }
+
+          return info;
+        }
+
+        const data = serializeElement(el);
+
+        // Copy JSON to clipboard
+        navigator.clipboard
+          .writeText(JSON.stringify(data, null, 2))
+          .then(() => {
+            console.log("Copied element DOM+CSS info to clipboard!");
+          })
+          .catch((err) => {
+            console.error("Clipboard copy failed", err);
+          });
+
+        // Turn off overlay
         off();
       }
 
