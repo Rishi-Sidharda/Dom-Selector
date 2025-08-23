@@ -98,7 +98,13 @@ document.getElementById("toggle").addEventListener("click", async () => {
           const obj = {};
           for (let i = 0; i < style.length; i++) {
             const prop = style[i];
-            obj[prop] = style.getPropertyValue(prop);
+            let val = style.getPropertyValue(prop);
+
+            // Normalize problematic quotes in font-family, content, etc.
+            if (typeof val === "string") {
+              val = val.replace(/"/g, "'");
+            }
+            obj[prop] = val;
           }
           return obj;
         }
@@ -110,12 +116,15 @@ document.getElementById("toggle").addEventListener("click", async () => {
             attributes: {},
             styles: getComputedStyleObject(element),
             children: [],
-            textContent:
-              element.childNodes.length === 1 &&
-              element.childNodes[0].nodeType === Node.TEXT_NODE
-                ? element.textContent.trim()
-                : undefined,
           };
+
+          // Add textContent if it's a pure text node
+          if (
+            element.childNodes.length === 1 &&
+            element.childNodes[0].nodeType === Node.TEXT_NODE
+          ) {
+            info.textContent = element.textContent.trim();
+          }
 
           // Collect attributes
           for (const attr of element.attributes || []) {
@@ -130,17 +139,17 @@ document.getElementById("toggle").addEventListener("click", async () => {
           return info;
         }
 
-        const data = serializeElement(el);
+        // Copy JSON safely to clipboard
+        function toClipBoard(obj) {
+          const json = JSON.stringify(obj, null, 2); // pretty print, escapes quotes
+          navigator.clipboard.writeText(json).then(
+            () => console.log("✅ JSON copied to clipboard"),
+            (err) => console.error("❌ Failed to copy:", err)
+          );
+        }
 
-        // Copy JSON to clipboard
-        navigator.clipboard
-          .writeText(JSON.stringify(data, null, 2))
-          .then(() => {
-            console.log("Copied element DOM+CSS info to clipboard!");
-          })
-          .catch((err) => {
-            console.error("Clipboard copy failed", err);
-          });
+        const data = serializeElement(el);
+        toClipBoard(data);
 
         // Turn off overlay
         off();
