@@ -93,32 +93,59 @@ document.getElementById("toggle").addEventListener("click", async () => {
         }
 
         // Utility: get computed styles as an object
-        function getComputedStyleObject(element) {
-          const style = window.getComputedStyle(element);
-          const obj = {};
-          for (let i = 0; i < style.length; i++) {
-            const prop = style[i];
-            let val = style.getPropertyValue(prop);
+        // Cache for default styles per tag
+        const defaultStylesCache = {};
 
-            // Normalize problematic quotes in font-family, content, etc.
-            if (typeof val === "string") {
-              val = val.replace(/"/g, "'");
-            }
-            obj[prop] = val;
+        function getDefaultStyleObject(tagName) {
+          if (defaultStylesCache[tagName]) return defaultStylesCache[tagName];
+
+          const el = document.createElement(tagName);
+          document.body.appendChild(el); // must be in DOM
+          const defaultStyles = window.getComputedStyle(el);
+          const obj = {};
+          for (let i = 0; i < defaultStyles.length; i++) {
+            const prop = defaultStyles[i];
+            obj[prop] = defaultStyles.getPropertyValue(prop);
           }
+          document.body.removeChild(el);
+
+          defaultStylesCache[tagName] = obj;
           return obj;
         }
 
-        // Recursive DOM+CSS serializer
+        function getFilteredStyleObject(element) {
+          const style = window.getComputedStyle(element);
+          const defaults = getDefaultStyleObject(element.tagName.toLowerCase());
+          const obj = {};
+
+          for (let i = 0; i < style.length; i++) {
+            const prop = style[i];
+            let val = style.getPropertyValue(prop);
+            let defVal = defaults[prop];
+
+            // Normalize quotes
+            if (typeof val === "string") {
+              val = val.replace(/"/g, "'");
+            }
+
+            // Only keep properties that differ from defaults
+            if (val !== defVal) {
+              obj[prop] = val;
+            }
+          }
+
+          return obj;
+        }
+
+        // Then swap into serializer
         function serializeElement(element) {
           const info = {
             tag: element.tagName.toLowerCase(),
             attributes: {},
-            styles: getComputedStyleObject(element),
+            styles: getFilteredStyleObject(element), // filtered!
             children: [],
           };
 
-          // Add textContent if it's a pure text node
           if (
             element.childNodes.length === 1 &&
             element.childNodes[0].nodeType === Node.TEXT_NODE
@@ -126,12 +153,10 @@ document.getElementById("toggle").addEventListener("click", async () => {
             info.textContent = element.textContent.trim();
           }
 
-          // Collect attributes
           for (const attr of element.attributes || []) {
             info.attributes[attr.name] = attr.value;
           }
 
-          // Serialize children (only Elements, skip text nodes already captured)
           for (const child of element.children) {
             info.children.push(serializeElement(child));
           }
