@@ -92,8 +92,6 @@ document.getElementById("toggle").addEventListener("click", async () => {
           return;
         }
 
-        // Utility: get computed styles as an object
-        // Cache for default styles per tag
         const defaultStylesCache = {};
 
         function getDefaultStyleObject(tagName) {
@@ -128,6 +126,12 @@ document.getElementById("toggle").addEventListener("click", async () => {
               val = val.replace(/"/g, "'");
             }
 
+            // Skip font-family
+            if (prop === "font-family") continue;
+
+            // Skip "d" if it somehow appears in styles
+            if (prop === "d") continue;
+
             // Only keep properties that differ from defaults
             if (val !== defVal) {
               obj[prop] = val;
@@ -137,7 +141,6 @@ document.getElementById("toggle").addEventListener("click", async () => {
           return obj;
         }
 
-        // Then swap into serializer
         function serializeElement(element) {
           const info = {
             tag: element.tagName.toLowerCase(),
@@ -154,6 +157,12 @@ document.getElementById("toggle").addEventListener("click", async () => {
           }
 
           for (const attr of element.attributes || []) {
+            // Special handling: replace "d" attribute with a default icon path
+            if (attr.name === "d") {
+              info.attributes[attr.name] = "M0 0h24v24H0z"; // default placeholder path
+              continue;
+            }
+
             info.attributes[attr.name] = attr.value;
           }
 
