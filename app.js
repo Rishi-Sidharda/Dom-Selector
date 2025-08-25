@@ -171,25 +171,30 @@ document.getElementById("toggle").addEventListener("click", async () => {
           for (const attr of element.attributes || []) {
             // Whitelist of attributes that directly affect visual rendering
             const visualAttributes = new Set([
-              "src",
+              // Accessibility / text hints that show up in UI
+              "placeholder", // input hints
+              "title", // tooltip text
+              "alt", // image fallback text
+
+              // Form controls / displayed values
+              "value", // default text/value for input, button labels, etc.
+              "checked", // checkbox/radio state is visible
+              "selected", // option visible state
+              "disabled", // visibly greys out controls
+              "readonly", // changes how control renders/behaves
+              "multiple", // UI changes for select boxes
+              "required", // browser shows visual cues (like red border/asterisk)
+
+              // Media elements
+              "poster", // <video> poster image
+              "controls", // shows playbar/controls
+              "autoplay", // autoplay indicator visible
+              "loop", // repeat indicator
+              "muted", // muted indicator
+
+              // Link / image sources (visually change content)
+              "src", // <img>, <video>, <audio>
               "href",
-              "alt",
-              "title",
-              "value",
-              "type",
-              "width",
-              "height",
-              "x",
-              "y",
-              "cx",
-              "cy",
-              "r",
-              "d",
-              "fill",
-              "stroke",
-              "stroke-width",
-              "viewBox",
-              "preserveAspectRatio",
             ]);
 
             // Skip attributes that are not visual
