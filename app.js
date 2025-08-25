@@ -92,12 +92,18 @@ document.getElementById("toggle").addEventListener("click", async () => {
           return;
         }
 
+        //Pruning and main logic starts here
+
         const defaultStylesCache = {};
 
         function getDefaultStyleObject(tagName) {
-          if (defaultStylesCache[tagName]) return defaultStylesCache[tagName];
+          // If it's a custom element (contains a dash), fallback to div
+          const normalizedTag = tagName.includes("-") ? "div" : tagName;
 
-          const el = document.createElement(tagName);
+          if (defaultStylesCache[normalizedTag])
+            return defaultStylesCache[normalizedTag];
+
+          const el = document.createElement(normalizedTag);
           document.body.appendChild(el); // must be in DOM
           const defaultStyles = window.getComputedStyle(el);
           const obj = {};
@@ -107,13 +113,16 @@ document.getElementById("toggle").addEventListener("click", async () => {
           }
           document.body.removeChild(el);
 
-          defaultStylesCache[tagName] = obj;
+          defaultStylesCache[normalizedTag] = obj;
           return obj;
         }
 
         function getFilteredStyleObject(element) {
+          const tagName = element.tagName.toLowerCase();
+          const normalizedTag = tagName.includes("-") ? "div" : tagName;
+
           const style = window.getComputedStyle(element);
-          const defaults = getDefaultStyleObject(element.tagName.toLowerCase());
+          const defaults = getDefaultStyleObject(normalizedTag);
           const obj = {};
 
           for (let i = 0; i < style.length; i++) {
@@ -142,8 +151,11 @@ document.getElementById("toggle").addEventListener("click", async () => {
         }
 
         function serializeElement(element) {
+          const tagName = element.tagName.toLowerCase();
+          const normalizedTag = tagName.includes("-") ? "div" : tagName;
+
           const info = {
-            tag: element.tagName.toLowerCase(),
+            tag: normalizedTag,
             attributes: {},
             styles: getFilteredStyleObject(element), // filtered!
             children: [],
