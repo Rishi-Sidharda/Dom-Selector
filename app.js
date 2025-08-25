@@ -169,6 +169,32 @@ document.getElementById("toggle").addEventListener("click", async () => {
           }
 
           for (const attr of element.attributes || []) {
+            // Whitelist of attributes that directly affect visual rendering
+            const visualAttributes = new Set([
+              "src",
+              "href",
+              "alt",
+              "title",
+              "value",
+              "type",
+              "width",
+              "height",
+              "x",
+              "y",
+              "cx",
+              "cy",
+              "r",
+              "d",
+              "fill",
+              "stroke",
+              "stroke-width",
+              "viewBox",
+              "preserveAspectRatio",
+            ]);
+
+            // Skip attributes that are not visual
+            if (!visualAttributes.has(attr.name)) continue;
+
             // Special handling: replace "d" attribute with a default icon path
             if (attr.name === "d") {
               info.attributes[attr.name] = "M0 0h24v24H0z"; // default placeholder path
@@ -184,6 +210,8 @@ document.getElementById("toggle").addEventListener("click", async () => {
 
           return info;
         }
+
+        //Pruning logic ends here
 
         // Copy JSON safely to clipboard
         function toClipBoard(obj) {
