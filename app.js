@@ -117,6 +117,80 @@ document.getElementById("toggle").addEventListener("click", async () => {
           return obj;
         }
 
+        // MVP whitelist of computed styles
+        const WHITELIST = [
+          // Box Model & Layout
+          "width",
+          "height",
+          "margin-top",
+          "margin-right",
+          "margin-bottom",
+          "margin-left",
+          "padding-top",
+          "padding-right",
+          "padding-bottom",
+          "padding-left",
+          "border-top-width",
+          "border-right-width",
+          "border-bottom-width",
+          "border-left-width",
+          "border-top-style",
+          "border-right-style",
+          "border-bottom-style",
+          "border-left-style",
+          "border-top-color",
+          "border-right-color",
+          "border-bottom-color",
+          "border-left-color",
+          "border-radius",
+          "box-sizing",
+          "display",
+          "position",
+          "top",
+          "right",
+          "bottom",
+          "left",
+          "z-index",
+          "overflow",
+          // Backgrounds & Effects
+          "background-color",
+          "background-image",
+          "background-repeat",
+          "background-position",
+          "background-size",
+          "box-shadow",
+          "opacity",
+          // Typography
+          "color",
+          "font-size",
+          "font-weight",
+          "font-style",
+          "line-height",
+          "letter-spacing",
+          "word-spacing",
+          "text-align",
+          "text-decoration",
+          "text-transform",
+          "white-space",
+          "vertical-align",
+          "text-shadow",
+          // Transforms & Filters
+          "transform",
+          "transform-origin",
+          "filter",
+          // Layout Systems
+          "flex-direction",
+          "justify-content",
+          "align-items",
+          "align-content",
+          "gap",
+          "grid-template-columns",
+          "grid-template-rows",
+          "grid-column-gap",
+          "grid-row-gap",
+          "place-items",
+        ];
+
         function getFilteredStyleObject(element) {
           const tagName = element.tagName.toLowerCase();
           const normalizedTag = tagName.includes("-") ? "div" : tagName;
@@ -125,27 +199,18 @@ document.getElementById("toggle").addEventListener("click", async () => {
           const defaults = getDefaultStyleObject(normalizedTag);
           const obj = {};
 
-          for (let i = 0; i < style.length; i++) {
-            const prop = style[i];
-            let val = style.getPropertyValue(prop);
-            let defVal = defaults[prop];
+          WHITELIST.forEach((prop) => {
+            // Skip font-family and "d"
+            if (prop === "font-family" || prop === "d") return;
 
-            // Normalize quotes
-            if (typeof val === "string") {
-              val = val.replace(/"/g, "'");
-            }
-
-            // Skip font-family
-            if (prop === "font-family") continue;
-
-            // Skip "d" if it somehow appears in styles
-            if (prop === "d") continue;
+            const val = style.getPropertyValue(prop).replace(/"/g, "'");
+            const defVal = defaults[prop];
 
             // Only keep properties that differ from defaults
             if (val !== defVal) {
               obj[prop] = val;
             }
-          }
+          });
 
           return obj;
         }
