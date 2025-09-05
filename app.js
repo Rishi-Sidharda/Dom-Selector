@@ -92,33 +92,140 @@ document.getElementById("toggle").addEventListener("click", async () => {
           return;
         }
 
-        // Utility: get computed styles as an object
-        function getComputedStyleObject(element) {
-          const style = window.getComputedStyle(element);
-          const obj = {};
-          for (let i = 0; i < style.length; i++) {
-            const prop = style[i];
-            let val = style.getPropertyValue(prop);
+        //Pruning and main logic starts here
 
-            // Normalize problematic quotes in font-family, content, etc.
-            if (typeof val === "string") {
-              val = val.replace(/"/g, "'");
-            }
-            obj[prop] = val;
+        const defaultStylesCache = {};
+
+        function getDefaultStyleObject(tagName) {
+          // If it's a custom element (contains a dash), fallback to div
+          const normalizedTag = tagName.includes("-") ? "div" : tagName;
+
+          if (defaultStylesCache[normalizedTag])
+            return defaultStylesCache[normalizedTag];
+
+          const el = document.createElement(normalizedTag);
+          document.body.appendChild(el); // must be in DOM
+          const defaultStyles = window.getComputedStyle(el);
+          const obj = {};
+          for (let i = 0; i < defaultStyles.length; i++) {
+            const prop = defaultStyles[i];
+            obj[prop] = defaultStyles.getPropertyValue(prop);
           }
+          document.body.removeChild(el);
+
+          defaultStylesCache[normalizedTag] = obj;
           return obj;
         }
 
-        // Recursive DOM+CSS serializer
+        // MVP whitelist of computed styles
+        const WHITELIST = [
+          // Box Model & Layout
+          "width",
+          "height",
+          "margin-top",
+          "margin-right",
+          "margin-bottom",
+          "margin-left",
+          "padding-top",
+          "padding-right",
+          "padding-bottom",
+          "padding-left",
+          "border-top-width",
+          "border-right-width",
+          "border-bottom-width",
+          "border-left-width",
+          "border-top-style",
+          "border-right-style",
+          "border-bottom-style",
+          "border-left-style",
+          "border-top-color",
+          "border-right-color",
+          "border-bottom-color",
+          "border-left-color",
+          "border-radius",
+          "box-sizing",
+          "display",
+          "position",
+          "top",
+          "right",
+          "bottom",
+          "left",
+          "z-index",
+          "overflow",
+          // Backgrounds & Effects
+          "background-color",
+          "background-image",
+          "background-repeat",
+          "background-position",
+          "background-size",
+          "box-shadow",
+          "opacity",
+          // Typography
+          "color",
+          "font-size",
+          "font-weight",
+          "font-style",
+          "line-height",
+          "letter-spacing",
+          "word-spacing",
+          "text-align",
+          "text-decoration",
+          "text-transform",
+          "white-space",
+          "vertical-align",
+          "text-shadow",
+          // Transforms & Filters
+          "transform",
+          "transform-origin",
+          "filter",
+          // Layout Systems
+          "flex-direction",
+          "justify-content",
+          "align-items",
+          "align-content",
+          "gap",
+          "grid-template-columns",
+          "grid-template-rows",
+          "grid-column-gap",
+          "grid-row-gap",
+          "place-items",
+        ];
+
+        function getFilteredStyleObject(element) {
+          const tagName = element.tagName.toLowerCase();
+          const normalizedTag = tagName.includes("-") ? "div" : tagName;
+
+          const style = window.getComputedStyle(element);
+          const defaults = getDefaultStyleObject(normalizedTag);
+          const obj = {};
+
+          WHITELIST.forEach((prop) => {
+            // Skip font-family and "d"
+            if (prop === "font-family" || prop === "d") return;
+
+            const val = style.getPropertyValue(prop).replace(/"/g, "'");
+            const defVal = defaults[prop];
+
+            // Only keep properties that differ from defaults
+            if (val !== defVal) {
+              obj[prop] = val;
+            }
+          });
+
+          return obj;
+        }
+
         function serializeElement(element) {
+          const tagName = element.tagName.toLowerCase();
+          const normalizedTag = tagName.includes("-") ? "div" : tagName;
+
           const info = {
-            tag: element.tagName.toLowerCase(),
+            tag: normalizedTag,
             attributes: {},
-            styles: getComputedStyleObject(element),
+            styles: getFilteredStyleObject(element), // filtered!
             children: [],
           };
 
-          // Add textContent if it's a pure text node
           if (
             element.childNodes.length === 1 &&
             element.childNodes[0].nodeType === Node.TEXT_NODE
@@ -126,18 +233,55 @@ document.getElementById("toggle").addEventListener("click", async () => {
             info.textContent = element.textContent.trim();
           }
 
-          // Collect attributes
           for (const attr of element.attributes || []) {
+            // Whitelist of attributes that directly affect visual rendering
+            const visualAttributes = new Set([
+              // Accessibility / text hints that show up in UI
+              "placeholder", // input hints
+              "title", // tooltip text
+              "alt", // image fallback text
+
+              // Form controls / displayed values
+              "value", // default text/value for input, button labels, etc.
+              "checked", // checkbox/radio state is visible
+              "selected", // option visible state
+              "disabled", // visibly greys out controls
+              "readonly", // changes how control renders/behaves
+              "multiple", // UI changes for select boxes
+              "required", // browser shows visual cues (like red border/asterisk)
+
+              // Media elements
+              "poster", // <video> poster image
+              "controls", // shows playbar/controls
+              "autoplay", // autoplay indicator visible
+              "loop", // repeat indicator
+              "muted", // muted indicator
+
+              // Link / image sources (visually change content)
+              "src", // <img>, <video>, <audio>
+              "href",
+            ]);
+
+            // Skip attributes that are not visual
+            if (!visualAttributes.has(attr.name)) continue;
+
+            // Special handling: replace "d" attribute with a default icon path
+            if (attr.name === "d") {
+              info.attributes[attr.name] = "M0 0h24v24H0z"; // default placeholder path
+              continue;
+            }
+
             info.attributes[attr.name] = attr.value;
           }
 
-          // Serialize children (only Elements, skip text nodes already captured)
           for (const child of element.children) {
             info.children.push(serializeElement(child));
           }
 
           return info;
         }
+
+        //Pruning logic ends here
 
         // Copy JSON safely to clipboard
         function toClipBoard(obj) {
