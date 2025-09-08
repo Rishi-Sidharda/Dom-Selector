@@ -193,6 +193,7 @@ document.getElementById("toggle").addEventListener("click", async () => {
 
         function getFilteredStyleObject(element) {
           const tagName = element.tagName.toLowerCase();
+          console.log(tagName);
           const normalizedTag = tagName.includes("-") ? "div" : tagName;
 
           const style = window.getComputedStyle(element);
@@ -219,6 +220,7 @@ document.getElementById("toggle").addEventListener("click", async () => {
           const tagName = element.tagName.toLowerCase();
           const normalizedTag = tagName.includes("-") ? "div" : tagName;
 
+          // Full info object
           const info = {
             tag: normalizedTag,
             attributes: {},
@@ -226,6 +228,13 @@ document.getElementById("toggle").addEventListener("click", async () => {
             children: [],
           };
 
+          // Minimal dom object
+          const dom = {
+            tag: normalizedTag,
+            children: [],
+          };
+
+          // Handle text content (only for info)
           if (
             element.childNodes.length === 1 &&
             element.childNodes[0].nodeType === Node.TEXT_NODE
@@ -233,52 +242,46 @@ document.getElementById("toggle").addEventListener("click", async () => {
             info.textContent = element.textContent.trim();
           }
 
+          // Whitelist attributes
+          const visualAttributes = new Set([
+            "placeholder",
+            "title",
+            "alt",
+            "value",
+            "checked",
+            "selected",
+            "disabled",
+            "readonly",
+            "multiple",
+            "required",
+            "poster",
+            "controls",
+            "autoplay",
+            "loop",
+            "muted",
+            "src",
+            "href",
+          ]);
+
           for (const attr of element.attributes || []) {
-            // Whitelist of attributes that directly affect visual rendering
-            const visualAttributes = new Set([
-              // Accessibility / text hints that show up in UI
-              "placeholder", // input hints
-              "title", // tooltip text
-              "alt", // image fallback text
-
-              // Form controls / displayed values
-              "value", // default text/value for input, button labels, etc.
-              "checked", // checkbox/radio state is visible
-              "selected", // option visible state
-              "disabled", // visibly greys out controls
-              "readonly", // changes how control renders/behaves
-              "multiple", // UI changes for select boxes
-              "required", // browser shows visual cues (like red border/asterisk)
-
-              // Media elements
-              "poster", // <video> poster image
-              "controls", // shows playbar/controls
-              "autoplay", // autoplay indicator visible
-              "loop", // repeat indicator
-              "muted", // muted indicator
-
-              // Link / image sources (visually change content)
-              "src", // <img>, <video>, <audio>
-              "href",
-            ]);
-
-            // Skip attributes that are not visual
             if (!visualAttributes.has(attr.name)) continue;
 
-            // Special handling: replace "d" attribute with a default icon path
             if (attr.name === "d") {
-              info.attributes[attr.name] = "M0 0h24v24H0z"; // default placeholder path
+              info.attributes[attr.name] = "M0 0h24v24H0z";
               continue;
             }
 
             info.attributes[attr.name] = attr.value;
           }
 
+          // Recurse for children
           for (const child of element.children) {
-            info.children.push(serializeElement(child));
+            const childResult = serializeElement(child);
+            info.children.push(childResult.info);
+            dom.children.push(childResult.dom);
           }
 
-          return info;
+          return { info, dom };
         }
 
         //Pruning logic ends here
